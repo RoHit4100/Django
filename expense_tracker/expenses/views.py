@@ -5,7 +5,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core import serializers
 import random
 from django.db.models import Sum, Avg, Count, Min, Max
-
+from datetime import date
 
 @csrf_exempt
 def expenseList(request):
@@ -239,7 +239,6 @@ def expenseLatest(request):
     except Exception as e:
         return JsonResponse({'error': str(e)})
 
-
 @csrf_exempt
 def expenseCompute(request):
     try: 
@@ -274,3 +273,59 @@ def expenseCompute(request):
     
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
+
+@csrf_exempt
+def expenseDateRange(request):
+    try:
+        if request.method == 'GET':
+            startDate = request.GET.get('start')
+            endDate = request.GET.get('end')
+            sort = request.GET.get('sort')
+            amount = request.GET.get('amount')
+            
+            # Check if startDate is provided
+            if startDate:
+                # Handle date range filtering
+                if endDate:
+                    expenses = Expense.objects.filter(date__range=[startDate, endDate])
+                else:
+                    # If endDate is not provided, use today's date
+                    todayDate = date.today()
+                    expenses = Expense.objects.filter(date__range=[startDate, todayDate])
+                
+                # Handle sorting by date
+                if sort in ['asc', 'desc']:
+                    if sort == 'asc':
+                        expenses = expenses.order_by('date')
+                    else:
+                        expenses = expenses.order_by('-date')
+                
+                # Handle filtering by amount (if provided)
+                elif amount:
+                    try:
+                        # Convert amount to an integer
+                        amount = float(amount)
+                        
+                        # Filter expenses where the amount is greater than or equal to the provided value
+                        conditionalExpense = sorted(
+                            [expense for expense in expenses if expense.amount >= amount],
+                            key=lambda x: x.amount
+                        )
+                        
+                        # Return filtered and sorted expenses
+                        return JsonResponse(list(expense_to_dict(conditionalExpense)), safe=False)
+                    except ValueError:
+                        return JsonResponse({'error': 'Invalid amount value'}, status=400)
+
+                # Return expenses sorted by date if no amount filtering is applied
+                return JsonResponse(list(expenses.values()), safe=False)
+            else:
+                return JsonResponse({'error': 'At least start date has to be mentioned'}, status=400)
+    
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+# Helper function to convert model instances to dictionaries if needed
+def expense_to_dict(expenses):
+    return [{'id': expense.id, 'date': expense.date, 'amount': expense.amount, 'title': expense.title} for expense in expenses]
