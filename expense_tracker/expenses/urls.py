@@ -12,6 +12,8 @@ urlpatterns = [
     path('expense/search/', views.expenseSearch, name='expenseSearch'),
     path('expense/latest/', views.expenseLatest, name='expenseLatest'),
     path('expense/compute/', views.expenseCompute, name='expenseCompute'), 
-    path('expense/range/', views.expenseDateRange, name='expenseDateRange'), 
+    path('expense/range/', views.expenseDateRange, name='expenseDateRange'),
+    path('expense/date/', views.expenseForDate, name='expenseForDate'),
+    path('expenses/month/', views.expensesForMonths, name='expensesForMonths'),
 ]
 

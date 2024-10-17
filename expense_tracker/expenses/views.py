@@ -52,7 +52,6 @@ def expenseList(request):
         elif request.method == 'POST':  # Adding feature to handle bulk data
             data = json.loads(request.body)  # Parse JSON string into a Python object
 
-            print(data)
             # Check if the data is a list (for bulk insert)
             if isinstance(data, list):
                 expenses = []
@@ -246,25 +245,10 @@ def expenseCompute(request):
             operations = request.GET.getlist('operation')  # Use getlist() to get multiple operations
             
             if operations:
-                validOperations = {
-                    'count': Count('id'), 
-                    'avg': Avg('amount'), 
-                    'sum': Sum('amount'), 
-                    'min': Min('amount'),
-                    'max': Max('amount')
-                }
-
-                # Filter only valid operations
-                givenOperation = [operation for operation in operations if operation in validOperations]
-                
-                if givenOperation:
-                    kwargsAggregate = {}
-                    for operation in givenOperation:
-                        kwargsAggregate[operation] = validOperations[operation]
-
+                if performOperations(operations):
+                    kwargsAggregate = performOperations(operations)
                     # Perform aggregation
                     expense = Expense.objects.aggregate(**kwargsAggregate)
-                    
                     return JsonResponse({'message': 'success', 'result': expense})
                 else:
                     return JsonResponse({'error': 'Invalid operations provided'}, status=400)
@@ -283,9 +267,8 @@ def expenseDateRange(request):
             sort = request.GET.get('sort')
             amount = request.GET.get('amount')
             
-            # Check if startDate is provided
+            # Check if startDate exists or not
             if startDate:
-                # Handle date range filtering
                 if endDate:
                     expenses = Expense.objects.filter(date__range=[startDate, endDate])
                 else:
@@ -311,11 +294,11 @@ def expenseDateRange(request):
                             [expense for expense in expenses if expense.amount >= amount],
                             key=lambda x: x.amount
                         )
-                        
-                        # Return filtered and sorted expenses
+                        # As conditionalExpense is present in the form of list of objects, convert this list into
+                        # list of objects, which will hold the information
                         return JsonResponse(list(expense_to_dict(conditionalExpense)), safe=False)
-                    except ValueError:
-                        return JsonResponse({'error': 'Invalid amount value'}, status=400)
+                    except Exception as e:
+                        return JsonResponse({'error': str(e)}, status=400)
 
                 # Return expenses sorted by date if no amount filtering is applied
                 return JsonResponse(list(expenses.values()), safe=False)
@@ -325,7 +308,111 @@ def expenseDateRange(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
-
-# Helper function to convert model instances to dictionaries if needed
 def expense_to_dict(expenses):
-    return [{'id': expense.id, 'date': expense.date, 'amount': expense.amount, 'title': expense.title} for expense in expenses]
+    return [{'id': expense.id, 'title': expense.title, 'date': expense.date, 'amount': expense.amount} for expense in expenses]
+
+def performOperations(givenOperations):
+    validOperations = {
+        'count': Count('id'), 
+        'avg': Avg('amount'), 
+        'sum': Sum('amount'), 
+        'min': Min('amount'),
+        'max': Max('amount')
+    }
+    # now traverse for each operation in operations, and get the valid operations
+    operations = [operation for operation in givenOperations if operation in ['count', 'avg', 'sum', 'min', 'max']]
+    # now create kwargs to pass in the aggregate function
+    if operations:
+        kwargsForAggregate = {}
+        for operation in operations:
+            kwargsForAggregate[operation] = validOperations[operation]
+        
+        return kwargsForAggregate
+    else : return None
+
+@csrf_exempt
+def expenseForDate(request):
+    try:
+        if request.method == 'GET':
+            # get the date 
+            targetDate = request.GET.get('date')
+            operationString = request.GET.get('operations')
+            if targetDate:
+                expenses =  Expense.objects.filter(date__iexact=targetDate)
+                if operationString:
+                    # split the operations from ,
+                    givenOperations = operationString.split(',')
+                    # perform the given operations
+                    if givenOperations:
+                        if performOperations(givenOperations):
+                            kwargsForAggregate = performOperations(givenOperations)
+                            
+                            afterComputation = expenses.aggregate(**kwargsForAggregate)
+                            return JsonResponse({'message': 'success', 'answer': afterComputation})
+                        else:
+                            return JsonResponse({'error': 'operations are not valid'}, status=400)
+                    else:
+                        return JsonResponse({'error': 'operations are not valid'}, status=400)
+                else:        
+                    return JsonResponse(list(expenses.values()), safe=False)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, 400)
+    
+@csrf_exempt
+def expensesForMonths(request):
+    try:
+        if request.method == "GET":
+            # Get the parameters
+            givenYear = request.GET.get('year')
+            givenMonth = request.GET.get('month')
+            operations = request.GET.get('operations')
+            sort = request.GET.get('sort')
+            target = request.GET.get('target')
+
+            # Default query to current month if no date parameters are provided
+            if not givenMonth and not givenYear:
+                currentMonth = date.today().month
+                currentYear = date.today().year
+                expenses = Expense.objects.filter(date__year=currentYear, date__month=currentMonth)
+            elif givenMonth and givenYear:
+                # Filter by the given month and year
+                givenMonth = int(givenMonth)
+                givenYear = int(givenYear)
+                expenses = Expense.objects.filter(date__year=givenYear, date__month=givenMonth)
+            else:
+                return JsonResponse({'message': 'Please enter valid parameters'}, status=400)
+
+            # Apply operations if provided
+            if operations:
+                givenOperations = operations.split(',')
+                kwargsAggregate = performOperations(givenOperations)
+                if kwargsAggregate:
+                    result = expenses.aggregate(**kwargsAggregate)
+                    return JsonResponse({'message': 'success', 'result': result})
+                else:
+                    return JsonResponse({'error': 'Invalid operations provided'}, status=400)
+
+            # Apply sorting logic
+            if sort and target:
+                if sort == 'asc':
+                    if target in ['id', 'title', 'amount', 'date']:
+                        expenses = expenses.order_by(target)
+                elif sort == 'desc':
+                    if target in ['id', 'title', 'amount', 'date']:
+                        expenses = expenses.order_by(f'-{target}')
+                else:
+                    return JsonResponse({'error': 'Invalid sort order'}, status=400)
+            elif sort and not target:  # Sorting without target defaults to 'id'
+                if sort == 'asc':
+                    expenses = expenses.order_by('id')
+                elif sort == 'desc':
+                    expenses = expenses.order_by('-id')
+                else:
+                    return JsonResponse({'error': 'Invalid sort order'}, status=400)
+
+            # Return the queryset as JSON
+            return JsonResponse(list(expenses.values('id', 'title', 'amount', 'date')), safe=False)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+

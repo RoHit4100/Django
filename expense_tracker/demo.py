@@ -1,5 +1,2 @@
-try: 
-    a = int('rohit')
-except Exception as e:
-    print(type(e))
-    print(e)
+from datetime import date
+print(date.today().month)
