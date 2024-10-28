@@ -12,65 +12,53 @@ def expenseList(request):
     # check if the request is GET or POST method
     try:
         if request.method == 'GET':
-            # Retrieve all expenses and return as a JSON response
-            # print(request.GET)
-            operation = request.GET.get('sort') # by default function will be in ascending order
-            target = request.GET.get('on')
+            # Retrieve query parameters
+            operation = request.GET.get('sort', 'asc')  # Default to 'asc' if not provided
+            target = request.GET.get('on', 'id')  # Default sort field if 'on' is not provided
+
+            # map target to model fields and build query
+            order_prefix = '' if operation == 'asc' else '-'
+            order_field = f"{order_prefix}{target}" if target in {'date', 'amount', 'title'} else 'id'
+            expenses = Expense.objects.order_by(order_field).values('id', 'title', 'amount', 'date')
             
-            if operation == 'asc': # perform ascending operations
-                # print('asc')
-                # check the target
-                if target == 'date': # target is date
-                    expense = Expense.objects.order_by('date').values('id', 'title', 'amount', 'date')[:10]
-                    return JsonResponse(list(expense), safe=False)   
-                elif target == 'amount':
-                    expense = Expense.objects.order_by('amount').values('id', 'title', 'amount', 'date')
-                    return JsonResponse(list(expense), safe=False)
-                elif target == 'title':
-                    expense = Expense.objects.order_by('title').values('id', 'title', 'amount', 'date')
-                    return JsonResponse(list(expense), safe=False)
+            return JsonResponse(list(expenses), safe=False)
+        else:
+            return JsonResponse({'error':'only GET method is allowed'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=404)
+
+
+def saveBatch(batchData):
+    # with keyword uswe to create context manager(way to allocate and release the resources when I want)
+    with transaction.atomic(): # all operations are either commited or nothing in the batch, rollback if exception is raised
+        Expense.objects.bulk_create(batchData)
+
+@csrf_exempt 
+def addExpenses(request):
+    try:
+        if request.method == 'POST':
+            # check if the data is instance of the list or not
+            data = json.loads(request.body)
+            
+            if isinstance(data, list): # this will check if the current data is list or not
+                expenseBatch = [
+                    Expense(title=item.get('title'), amount=item.get('amount'), date=item.get('date'))
+                    for item in data if item.get('title') and item.get('amount') and item.get('date')
+                ]
+
                 
-            elif operation == 'desc':
-                # print('desc')
-                if target == 'date': # target is date
-                    expense = Expense.objects.order_by('-date').values('id', 'title', 'amount', 'date')
-                    return JsonResponse(list(expense), safe=False)   
-                elif target == 'amount':
-                    expense = Expense.objects.order_by('-amount').values('id', 'title', 'amount', 'date')
-                    return JsonResponse(list(expense), safe=False)
-                elif target == 'title':
-                    expense = Expense.objects.order_by('-title').values('id', 'title', 'amount', 'date')
-                    return JsonResponse(list(expense), safe=False)
-            else:
-                # print('default')
-                expenses = Expense.objects.all()
-                # # print(expenses)
-                # expenses = serializers.serialize('json', expenses)
-                # return HttpResponse(expenses, content_type='application/json') # safe=False means data is not a dictionary
-                return JsonResponse(list(expenses.values()), safe=False)
-
-        elif request.method == 'POST':  # Adding feature to handle bulk data
-            data = json.loads(request.body)  # Parse JSON string into a Python object
-
-            # Check if the data is a list (for bulk insert)
-            if isinstance(data, list):
-                expenses = []
-                for item in data:
-                    title = item.get('title')
-                    amount = item.get('amount')
-                    date = item.get('date')
-                    # Validate if any data is absent
-                    if not title or not amount or not date:
-                        return JsonResponse({'error': 'Missing values'}, status=400)
-
-                    # Create new Expense instance and add to the list
-                    expenses.append(Expense(title=title, amount=amount, date=date))
+                if not expenseBatch:
+                    return JsonResponse({'error': 'Invalid data in batch'}, status=400)
                 
-                # Perform bulk insert
-                Expense.objects.bulk_create(expenses)
-                return JsonResponse({'message': 'Expenses added successfully'}, status=201)
-
-            # Handle single data entry
+                # using threading pool to handle batch saving concurrently
+                with ThreadPoolExecutor(max_workers=5) as executor:
+                    # now process the data while using batch
+                    for i in range(0, len(expenseBatch), 100):
+                        batch = expenseBatch[i:i + 100]
+                        executor.submit(saveBatch, batch)
+                
+                return JsonResponse({'message': 'Expenses are added successfully'}, status=200)
+            # handle single data entry
             else:
                 title = data.get('title')
                 amount = data.get('amount')
@@ -83,8 +71,12 @@ def expenseList(request):
                 # Create new Expense instance
                 expense = Expense.objects.create(title=title, amount=amount, date=date)
                 return JsonResponse({'message': 'Expense added successfully.', 'id': expense.id}, status=201)
+        else:
+            return JsonResponse({'error': 'only POST method is allowed'}, status=400)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=404)
+        return JsonResponse({'error': str(e)}, status = 400)
+
+
 
 @csrf_exempt
 def expenseDetail(request, pk):
