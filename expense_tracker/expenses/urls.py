@@ -15,5 +15,6 @@ urlpatterns = [
     path('expense/range/', views.expenseDateRange, name='expenseDateRange'),
     path('expense/date/', views.expenseForDate, name='expenseForDate'),
     path('expenses/month/', views.expensesForMonths, name='expensesForMonths'),
+    path('add-expense/', views.addExpenses, name='addExpenses')
 ]
 
