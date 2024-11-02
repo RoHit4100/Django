@@ -34,3 +34,27 @@ RATING_REVIEW = "review"
 SALE_RESTAURANT = "restaurant"
 SALE_INCOME = "income"
 SALE_DATE_TIME = "date_time"
+
+# Email Subjects
+WELCOME_EMAIL_SUBJECT = "Welcome to DEMO_APPLICATION!"
+
+# Email Templates
+WELCOME_EMAIL_MESSAGE = """
+Hi {username},
+
+Congratulations! Your account has been successfully created with DEMO_SERVICE.
+
+We're thrilled to have you on board! Here are your next steps:
+
+1. Login to your account: Use the link below to access your account and get started.
+2. Explore our features: Discover all that we have to offer.
+
+---
+
+Email ID: {email_id}
+
+If you have any questions or need assistance, feel free to reach out to our support team at support@demoapplication.com.
+
+Best regards,  
+The DEMO_APPLICATION Team
+"""

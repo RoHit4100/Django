@@ -1,0 +1,63 @@
+# Ignore Python bytecode and cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ignore virtual environment folders
+venv/
+env/
+
+# Ignore Django-specific files
+*.log
+*.pot
+*.pyc
+db.sqlite3
+db.sqlite3-journal
+
+# Ignore Django static and media files
+media/
+staticfiles/
+static/
+
+# Ignore environment and secrets files
+.env
+.env.*
+
+# Ignore compiled files
+*.pyo
+
+# Ignore VS Code workspace settings
+.vscode/
+
+# Ignore IDEs and editors
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Ignore Windows system files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Ignore macOS system files
+.DS_Store
+
+# Ignore Django migrations
+**/migrations/*.py
+!**/migrations/__init__.py
+
+# Ignore Python package folders
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
