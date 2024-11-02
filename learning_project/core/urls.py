@@ -7,5 +7,9 @@ urlpatterns = [
     path('create-rating/', views.createRating, name='createRating'),
     path('create-sale', views.createSale, name='createSale'),
     path('get-restaurants/', views.getRestaurants, name='getRestaurants'),  
+    path('get-restaurant/', views.getRestaurant, name='getRestaurant'),
+    path('get-ratings/', views.getRatingsForRestaurant, name='getRatings'),
+    path('get-sales/', views.getSalesForRestaurant, name='getSalesForRestaurant'),
+    path('get-restaurant-with-name/', views.getRestaurantWithName, name='getRestaurantWithName'),
 ]
 

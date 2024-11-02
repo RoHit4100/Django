@@ -8,6 +8,7 @@ import requests
 from .constants import *
 from .common_functions import *
 from .constants import *
+from django.forms.models import model_to_dict
 
 @csrf_exempt
 def registration(request):
@@ -142,26 +143,130 @@ def getRestaurants(request):
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=HTTP_STATUS_BAD_REQUEST)
-    
+   
 def getRestaurant(request):
     try:
         if request.method == 'GET':
-            # get the field name and the value, for that particular field
-            field = request.GET.get('field')
-            value = request.GET.get('value')
-            
-            if not field or not value:
-                return JsonResponse({'error': 'Missing Values'}, status=HTTP_STATUS_BAD_REQUEST)
-            
-            # now perform the validation for the field
-            if field not in ['id', 'name', 'website', 'date_opened', 'longitude', 'latitude', 'restaurant_type']:
-                return JsonResponse({'error': 'Not valid field'}, status=HTTP_STATUS_BAD_REQUEST)
+            fields = request.GET.getlist('field')
+            values = request.GET.getlist('value')
+            print(fields)
+            print(values)
 
-            restaurant = Restaurant.objects.filter(field=value)
+            if not fields or not values or len(fields) != len(values):
+                return JsonResponse({'error': 'Field and value parameters are missing or mismatched.'}, status=HTTP_STATUS_BAD_REQUEST)
+
+            # Validate each field
+            valid_fields = {'id', 'name', 'website', 'date_opened', 'longitude', 'latitude', 'restaurant_type'}
+            filter_kwargs = {}
+
+            for field, value in zip(fields, values):
+                if field not in valid_fields:
+                    return JsonResponse({'error': f'{field} is not a valid field'}, status=HTTP_STATUS_BAD_REQUEST)
+                filter_kwargs[field] = value
+
+            # Filter with multiple conditions
+            restaurant = Restaurant.objects.filter(**filter_kwargs)
+
             if not restaurant.exists():
-                return JsonResponse({'error': 'There is nothing related to this field and the value'}, status=HTTP_STATUS_BAD_REQUEST)
-            
+                return JsonResponse({'error': 'No matching record found'}, status=HTTP_STATUS_BAD_REQUEST)
+
             return JsonResponse(list(restaurant.values()), safe=False, status=HTTP_STATUS_OK)
+        
+        return JsonResponse({'error': 'Only GET methods are allowed'}, status=HTTP_STATUS_BAD_REQUEST)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=HTTP_STATUS_BAD_REQUEST)
+
+def getRatingsForRestaurant(request):
+    try:
+        if request.method == 'GET':
+            fields = request.GET.getlist('field')
+            values = request.GET.getlist('value')
+            print(fields)
+            print(values)
+            # validation
+            if not fields or not values or len(fields) != len(values):
+                return JsonResponse({'error': 'Field and value parameters are missing or mismatched.'}, status=HTTP_STATUS_BAD_REQUEST)
+            
+            # check if the field is valid
+            valid_fields = {'name', 'id', 'latitude', 'longitude'}
+            filter_kwargs = {}
+
+            for field, value in zip(fields, values):
+                if field not in valid_fields:
+                    return JsonResponse({'error': f'{field} is not valid field'}, status=HTTP_STATUS_BAD_REQUEST)
+                filter_kwargs[field] = value
+            
+            # now search
+            restaurant = Restaurant.objects.get(**filter_kwargs)
+            # Serialize restaurant data
+            restaurant_data = model_to_dict(restaurant)
+            
+            ratings = restaurant.ratings.all().values()
+            return JsonResponse({'restarant_detail': restaurant_data, 'ratings':list(ratings)}, status=HTTP_STATUS_OK)
+            
+        return JsonResponse({'error': 'Only GET methods are allowed'}, status=HTTP_STATUS_BAD_REQUEST)
+    except Restaurant.DoesNotExist:
+        return JsonResponse({'error': 'No matching record found'}, status=HTTP_STATUS_BAD_REQUEST)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=HTTP_STATUS_BAD_REQUEST)
+    
+def getSalesForRestaurant(request):
+    try:
+        if request.method == "GET":
+            fields = request.GET.getlist('field')
+            values = request.GET.getlist('value')
+            print(fields)
+            print(values)
+            # validation
+            if not fields or not values or len(fields) != len(values):
+                return JsonResponse({'error': 'Field and value parameters are missing or mismatched.'}, status=HTTP_STATUS_BAD_REQUEST)
+            
+            # check if the field is valid
+            valid_fields = {'name', 'id', 'latitude', 'longitude'}
+            filter_kwargs = {}
+
+            for field, value in zip(fields, values):
+                if field not in valid_fields:
+                    return JsonResponse({'error': f'{field} is not valid field'}, status=HTTP_STATUS_BAD_REQUEST)
+                filter_kwargs[field] = value
+            
+            # now search
+            restaurant = Restaurant.objects.get(**filter_kwargs)
+            # Serialize restaurant data
+            restaurant_data = model_to_dict(restaurant)
+            
+            ratings = restaurant.sales.all().values()
+            return JsonResponse({'restarant_detail': restaurant_data, 'ratings':list(ratings)}, status=HTTP_STATUS_OK)
+            
+        return JsonResponse({'error': 'Only GET methods are allowed'}, status=HTTP_STATUS_BAD_REQUEST)
+    except Restaurant.DoesNotExist:
+        return JsonResponse({'error': 'No matching record found'}, status=HTTP_STATUS_BAD_REQUEST)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=HTTP_STATUS_BAD_REQUEST)
+    
+def getRestaurantWithName(request):
+    try:
+        if request.method == "GET":
+            name = request.GET.get('name')
+            if not name:
+                return JsonResponse({'error': 'Missing search parameter'}, status=HTTP_STATUS_BAD_REQUEST)
+
+            # Filter restaurants by name
+            restaurants = Restaurant.objects.filter(name__icontains=name)
+            if not restaurants.exists():
+                return JsonResponse({'error': 'No records containing given name'}, status=HTTP_STATUS_BAD_REQUEST)
+
+            # Collect restaurant and ratings data
+            restaurant_data = []
+            for restaurant in restaurants:
+                # print(restaurant)
+                restaurant_info = model_to_dict(restaurant)
+                ratings = list(restaurant.ratings.all().values())  # Get ratings for each restaurant
+                restaurant_info['ratings'] = ratings
+                restaurant_data.append(restaurant_info)
+
+            return JsonResponse({'restaurant-data': restaurant_data}, status=HTTP_STATUS_OK)
         else:
             return JsonResponse({'error': 'Only GET methods are allowed'}, status=HTTP_STATUS_BAD_REQUEST)
     except Exception as e:
