@@ -11,5 +11,6 @@ urlpatterns = [
     path('get-ratings/', views.getRatingsForRestaurant, name='getRatings'),
     path('get-sales/', views.getSalesForRestaurant, name='getSalesForRestaurant'),
     path('get-restaurant-with-name/', views.getRestaurantWithName, name='getRestaurantWithName'),
+    path('get-restaurant-with-type/', views.searchWithTypes, name='searchRestaruantWithType'),  
 ]
 

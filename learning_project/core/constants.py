@@ -17,12 +17,26 @@ DEFAULT_PAGE_SIZE = 10
 MAX_PAGE_SIZE = 100
 
 # Restaurant Model Field Names
+RESTAURANT_ID = 'id'
 RESTAURANT_NAME = "name"
 RESTAURANT_WEBSITE = "website"
 RESTAURANT_DATE_OPENED = "date_opened"
 RESTAURANT_LONGITUDE = "longitude"
 RESTAURANT_LATITUDE = "latitude"
 RESTAURANT_TYPE = "restaurant_type"
+RESTAURANT_TYPE_CHOICES = [
+        ('IN', "Indian"),
+        ('IT', "Italian"),
+        ('CH', "Chinese"),
+        ('JP', "Japanese"),
+        ('MX', "Mexican"),
+        ('FR', "French"),
+        ('US', "American"),
+        ('MD', "Mediterranean"),
+        ('TH', "Thai"),
+        ('GR', "Greek"),
+        ('OTH', 'Other')
+    ]
 
 # Rating Model Field Names
 RATING_USER = "user"

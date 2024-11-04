@@ -2,23 +2,10 @@ from django.core.validators import MaxValueValidator, MinValueValidator, URLVali
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+from .constants import RESTAURANT_TYPE_CHOICES
 
 # Restaurant
 class Restaurant(models.Model):
-    RESTAURANT_TYPE_CHOICES = [
-        ('IN', "Indian"),
-        ('IT', "Italian"),
-        ('CH', "Chinese"),
-        ('JP', "Japanese"),
-        ('MX', "Mexican"),
-        ('FR', "French"),
-        ('US', "American"),
-        ('MD', "Mediterranean"),
-        ('TH', "Thai"),
-        ('GR', "Greek"),
-        ('OTH', 'Other')
-    ]
-
     name = models.CharField(
         max_length=100,
         db_index=True,

@@ -156,7 +156,7 @@ def getRestaurant(request):
                 return JsonResponse({'error': 'Field and value parameters are missing or mismatched.'}, status=HTTP_STATUS_BAD_REQUEST)
 
             # Validate each field
-            valid_fields = {'id', 'name', 'website', 'date_opened', 'longitude', 'latitude', 'restaurant_type'}
+            valid_fields = {RESTAURANT_NAME, RESTAURANT_ID, RESTAURANT_LATITUDE, RESTAURANT_LONGITUDE, RESTAURANT_TYPE, RESTAURANT_WEBSITE, RESTAURANT_DATE_OPENED} 
             filter_kwargs = {}
 
             for field, value in zip(fields, values):
@@ -189,7 +189,7 @@ def getRatingsForRestaurant(request):
                 return JsonResponse({'error': 'Field and value parameters are missing or mismatched.'}, status=HTTP_STATUS_BAD_REQUEST)
             
             # check if the field is valid
-            valid_fields = {'name', 'id', 'latitude', 'longitude'}
+            valid_fields = {RESTAURANT_NAME, RESTAURANT_ID, RESTAURANT_LATITUDE, RESTAURANT_LONGITUDE}
             filter_kwargs = {}
 
             for field, value in zip(fields, values):
@@ -223,7 +223,7 @@ def getSalesForRestaurant(request):
                 return JsonResponse({'error': 'Field and value parameters are missing or mismatched.'}, status=HTTP_STATUS_BAD_REQUEST)
             
             # check if the field is valid
-            valid_fields = {'name', 'id', 'latitude', 'longitude'}
+            valid_fields = {RESTAURANT_NAME, RESTAURANT_ID, RESTAURANT_LATITUDE, RESTAURANT_LONGITUDE}
             filter_kwargs = {}
 
             for field, value in zip(fields, values):
@@ -269,5 +269,26 @@ def getRestaurantWithName(request):
             return JsonResponse({'restaurant-data': restaurant_data}, status=HTTP_STATUS_OK)
         else:
             return JsonResponse({'error': 'Only GET methods are allowed'}, status=HTTP_STATUS_BAD_REQUEST)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=HTTP_STATUS_BAD_REQUEST)
+
+@csrf_exempt
+def searchWithTypes(request):
+    try:
+        if request.method == 'POST':
+            data = json.loads(request.body)
+            types = data.get('restaurant_type')
+            
+            choices = RESTAURANT_TYPE_CHOICES
+            # Validate types
+            valid_choices = {choice[0] for choice in choices}
+            if not all(t in valid_choices for t in types):
+                return JsonResponse({'error': 'Please enter valid choices'}, status=HTTP_STATUS_BAD_REQUEST)
+
+            # Filter restaurants
+            restaurants = Restaurant.objects.filter(restaurant_type__in=types).values()
+            return JsonResponse(list(restaurants), safe=False, status=HTTP_STATUS_OK)
+        else:
+            return JsonResponse({'error': 'Only POST methods are allowed'}, status=HTTP_STATUS_BAD_REQUEST)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=HTTP_STATUS_BAD_REQUEST)
